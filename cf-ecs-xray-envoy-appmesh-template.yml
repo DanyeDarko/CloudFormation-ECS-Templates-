@@ -1,0 +1,1186 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to deploy Fargate Services in Elastic Container Service DevOps CoE Apis / CoE Cloud / CoE Microservicios
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "GLOBAL PARAMETERS"
+        Parameters:
+          - awsEnvironment
+          - microserviceLayer
+          - areaGerencia
+          - databasePort    
+      -
+        Label:
+          default: "ELASTIC CONTAINER REGISTRY PARAMETERS"
+        Parameters:
+          - createEcr
+          - elasticContainerRegistry  
+      - 
+        Label: 
+          default: "FARGATE SERVICE PARAMETERS"
+        Parameters: 
+          - serviceName
+          - failureThreshold
+          - serviceTaskDesiredCount
+          - maximumPercent
+          - minimumHealthyPercent
+          - healthCheckGracePeriodSeconds
+          - serviceDiscovery
+          - serviceDiscoveryName
+          - TTLTime 
+      - 
+        Label:
+          default: "CONTAINER DEFINITION PARAMETERS"
+        Parameters:
+          - latestVersion
+          - containerPortDefault
+          - portMapping1
+          - portMapping2
+          - portMapping3  
+          - portMapping4
+          - portMapping5
+          - envVar1
+          - envVar2
+          - envVar3
+          - envVar4
+          - envVar5
+          - envVar6
+          - envVar7
+          - envVar8
+          - envVar9
+          - envVar10
+          - dbParameters
+          - secret1
+          - secret2
+          - secret3
+          - secret4
+          - secret5
+      -
+        Label:
+          default: "TASK DEFINITION PARAMETERS"
+        Parameters:
+          - cpu
+          - memory
+          - ecsTaskExecutionRole
+          - ecsTaskRole
+      -
+        Label:
+          default: "TARGET GROUP PARAMETERS"
+        Parameters:
+          - healthCheckEnabled
+          - targetGroupProtocol
+          - healthCheckPath
+          - HealthCheckIntervalSeconds
+          - HealthCheckTimeoutSeconds
+          - HealthyThresholdCount
+          - UnhealthyThresholdCount
+      -
+        Label:
+          default: "ELASTIC LOAD BALANCER PARAMETERS"
+        Parameters:
+          - loadBalancerPathPatterns
+          - pathPriority
+      -
+        Label:
+          default: "AUTO SCALLING PARAMETERS"
+        Parameters:
+          - scallingMaximumTaskCount
+          - cpuAutoScalling
+          - cpuLimitTarget
+          - ramAutoScalling
+          - ramLimitTarget
+          - perRequestAutoScalling
+          - perRequestLimitTarget
+      -
+        Label:
+          default: "APP MESH PARAMETERS"
+        Parameters:
+          - appMeshName
+          - backend1
+          - backend2
+          - backend3
+          - backend4
+          - backend5
+  ParameterLabels:
+#---------------------------- GLOBAL PARAMETERS -----------------------------------------
+    awsEnvironment:
+      default: ambiente de despliegue de el service 
+    microserviceLayer:       
+      default: capa a la que pertenece el microservicio 'backend|frontend|middleware|enrolamiento'
+    areaGerencia:
+      default: area o gerencia a la que pertenece el proyecto dentro de  los grupos de Gitlab/Codecommit
+    databasePort:
+      default: puerto de egreso para trafico de base de datos a excluir en el proxy configuration    
+#---------------------------- ELASTIC CONTAINER REGISTRY PARAMETERS ---------------------
+    createEcr:
+      default: boleano para establecer la creacion del registro de imagenes docker ECR
+    elasticContainerRegistry:
+      default: nombre del registro de imagenes docker
+#---------------------------- FARGATE SERVICE PARAMETERS --------------------------------
+    serviceName:
+      default: nombre del service fargate; debe adecuarse al estandar brindado por Coe Cloud SRV-[MICROSERVICE|UTILITY|ENTITY|TASK]-FUNCIONALIDAD-VERSION
+    failureThreshold:  
+      default: numero de errores antes de validar el estado unhealthty del service discovery 
+    serviceTaskDesiredCount:
+      default: numero de replicas de la task definition que se desea ejecutar dentro del service
+    maximumPercent:
+      default: maximo porcentaje de salud que debe de tener el service para estar healthy 
+    minimumHealthyPercent: 
+      default: minimo porcentaje de salud que debe de tener el service para estar healthy 
+    healthCheckGracePeriodSeconds:
+      default: cuando tiempo debe esperar el service antes de realizar  request a la ruta de salud del microservicio
+    serviceDiscovery:
+      default: valor boleano indicando si aplicar o no service discovery
+    serviceDiscoveryName:
+      default: nombre dado al service discovery ,si no se especifica uno se otorgara uno en base al estandar sd-srv-[microservice|utility|entity|task|]-funcionalidad-version
+    TTLTime:
+      default: time to live para las peticiones de DNS hacia la VPC y resolver ip del service discovery
+#---------------------------- CONTAINER DEFINITION PARAMETERS ---------------------------
+    latestVersion:
+      default: Ultima version de la imagen docker a desplegar
+    containerPortDefault:
+      default: puerto default o estandar que expone el contenedor debe ser definida con protocolo "9000/udp"
+    portMapping1:
+      default: puerto adicional a exponer en el contenedor debe ser definida con protocolo "8080/tcp"
+    portMapping2:
+      default: puerto adicional a exponer en el contenedor debe ser definida con protocolo "9000/udp"
+    portMapping3: 
+      default: puerto adicional a exponer en el contenedor debe ser definida con protocolo "8080/tcp"
+    portMapping4:
+      default: puerto adicional a exponer en el contenedor debe ser definida con protocolo "9000/udp"
+    portMapping5:
+      default: puerto adicional a exponer en el contenedor debe ser definida con protocolo "8080/tcp"
+    envVar1:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar2:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar3:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar4:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar5:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar6:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar7:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar8:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar9:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    envVar10:
+      default: variable de entorno  a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||ENV_VALUE"
+    dbParameters:
+      default: secreto con datos de la DB a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||SECRET_NAME_FROM_SECRETMANAGER"
+    secret1:
+      default: secreto a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||SECRET_NAME_FROM_SECRETMANAGER"
+    secret2:
+      default: secreto a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||SECRET_NAME_FROM_SECRETMANAGER"
+    secret3:
+      default: secreto a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||SECRET_NAME_FROM_SECRETMANAGER"
+    secret4:
+      default: secreto a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||SECRET_NAME_FROM_SECRETMANAGER"
+    secret5:
+      default: secreto a inyectar en el contenedor debe ser definida con pipes intermedios  "ENVIROMENT_VAR_NAME||SECRET_NAME_FROM_SECRETMANAGER"
+#---------------------------- TASK DEFINITION PARAMETERS --------------------------------
+    cpu:
+      default: Cpu resources para task definition  256 (.25cpu) || 512 (.5 vCPU) || 1024 (1 vCPU) || 2048 (2 vCPU) || 4096 (4 vCPU)
+    memory:
+      default: Ram resources para task definition Memoria deberia ser de 1GB a 16GB
+    ecsTaskExecutionRole:
+      default: Rol de la task definition para comunicarse con las apis de otros servicios en AWS
+    ecsTaskRole:
+      default: Rol de ejecucion de la task definition
+#---------------------------  TARGET GROUP PARAMETERS -----------------------------------
+    healthCheckEnabled:
+      default: boleano para activar la validacion mediante request health a la ruta de salud del microservicio
+    targetGroupProtocol:
+      default: portocolo de el target Group HTTP | TCP | TLS 
+    healthCheckPath:
+      default: ruta de salud absoluta del microservicio /actuator/health/ReadinessState
+    HealthCheckIntervalSeconds:
+      default: intervalo de segundos en el que se estara realizando el request health de manera constante a la ruta de salud del microservicio
+    HealthCheckTimeoutSeconds:
+      default: tiempo maximo de espera en caso de que la ruta de salud no conteste
+    HealthyThresholdCount:
+      default: cuantas peticiones deben ser exitosas para validar el estado healthy del microservicio
+    UnhealthyThresholdCount:
+      default: cuantas peticiones deben ser erroneas para validar el estado unhealthy del microservicio 
+#---------------------------- ELASTIC LOAD BALANCER PARAMETERS --------------------------
+    loadBalancerPathPatterns:
+      default: rutas a exponer en la regla de el balanceador ,es posible exponer hasta 5 rutas separadas por coma y con regex si es necesario /ruta1/v1/*,/ruta2/v1/*,/ruta3/v1/*
+    pathPriority:
+      default: prioridad de la regla en el balanceador
+#---------------------------- AUTO SCALLING PARAMETERS ----------------------------------
+    scallingMaximumTaskCount:
+      default: maxima cantidad de tareas que el service fargate puede incrementar
+    cpuAutoScalling:
+      default: boleano para activar el auto scalling por uso maximo de cpu
+    cpuLimitTarget:
+      default: limite de uso maximo de cpu 
+    ramAutoScalling:
+      default: boleano para activar el auto scalling por uso maximo de memoria
+    ramLimitTarget:
+      default: limite de uso maximo de memoria
+    perRequestAutoScalling:
+      default:  boleano para activar el auto scalling por linmite maximo de peticiones
+    perRequestLimitTarget:
+      default: limite maximo de saturacion de peticiones 
+#---------------------------- APP MESH PARAMETERS ---------------------------------------    
+
+Parameters:
+#---------------------------- GLOBAL PARAMETERS -----------------------------------------
+    awsEnvironment:
+      Type: String
+      Default: dev
+      AllowedValues:
+        - "dev" 
+        - "qa"
+        - "prod"
+        - "drp"
+      ConstraintDescription: El ambiente debe ser en base al estandar de nombrado de ramas configuradas en el repositorio GitLab y permitidas por el Job de Jenkins dev,int,qa
+      MaxLength: 4
+      MinLength: 2
+    microserviceLayer:
+      Type: String
+      Default: backend
+      Description: Capa perteneciente de los servicios fargate 
+      AllowedValues:
+        - frontend
+        - backend
+        - middleware 
+    areaGerencia:
+      Type: String
+      Default: /GitlabRootGroup/GitlabSubGroup
+      Description: Area perteneciente a servicio o organisadas dentro de repositorio Git
+    databasePort:
+      Type: String
+      Default: 4410
+#---------------------------- ELASTIC CONTAINER REGISTRY PARAMETERS ---------------------
+    createEcr:
+      Type: String
+      Default: false
+      Description: indica si es necesario crear un registro de imagenes docker         
+#---------------------------- FARGATE SERVICE PARAMETERS --------------------------------
+    serviceName:
+      Type: String
+      Default: SRV-MICROSERVICE-FUNCIONALIDAD-V1
+    failureThreshold:  
+      Type: Number  
+      Default: 1
+    serviceTaskDesiredCount:
+      Type: Number
+      Default: 1
+      MinValue: 1
+      MaxValue: 100
+    maximumPercent:
+      Type: Number
+      Default: 200
+    minimumHealthyPercent:
+      Type: Number
+      Default: 100
+    healthCheckGracePeriodSeconds:
+      Type: Number
+      Default: 120
+    serviceDiscovery:
+      Type: String 
+      Default: "true"
+    serviceDiscoveryName:
+      Type: String
+      Default: ""  
+    TTLTime:
+      Type: Number
+      Default: 60
+#---------------------------- CONTAINER DEFINITION PARAMETERS ---------------------------
+    elasticContainerRegistry:
+      Type: String
+      Default: microservice-microserviceLayer
+      Description: Nombre del proyecto/microservicio
+      ConstraintDescription: El nombre del ECR debe adecuarse a los estandares de nombrado de elektra comercial del repositorio de Imagenes ECR  , verifique y vuelva a intentarlo
+    latestVersion:
+      Type: String
+      Default: 0.0.1
+      Description: Version del container a desplegar
+      ConstraintDescription: La version del contenedor debe ser (0-9).(0-9).(1-9)    
+    # Default port to expose
+    containerPortDefault:
+      Type: String
+      Default: "10443/tcp"
+    # additional ports to expose exponer from container to fargate service
+    portMapping1:
+      Type: String
+      Default: ""
+      NoEcho: true
+    portMapping2:
+      Type: String
+      Default: ""
+      NoEcho: true
+    portMapping3:
+      Type: String
+      Default: ""
+      NoEcho: true
+    portMapping4:
+      Type: String
+      Default: ""
+      NoEcho: true
+    portMapping5:
+      Type: String
+      Default: ""
+      NoEcho: true
+  # enviroments variables for container definition (no sensitive data)
+    envVar1:
+      Type: String
+      Default: ""
+      NoEcho: true
+    envVar2:
+      Type: String
+      Default: ""
+      NoEcho: true
+    envVar3:
+      Type: String
+      Default: ""
+      NoEcho: true
+    envVar4:
+      Type: String
+      Default: ""
+      NoEcho: true
+    envVar5:
+      Type: String
+      Default: ""
+      NoEcho: true
+    envVar6:
+      Type: String
+      Default: ""
+      NoEcho: true
+    envVar7:
+      Type: String
+      Default: ""
+      NoEcho: true    
+    envVar8:
+      Type: String
+      Default: ""
+    envVar9:
+      Type: String
+      Default: ""
+    envVar10:
+      Type: String
+      Default: ""
+    dbParameters:
+      Type: String
+      Default: ""
+      NoEcho: true     
+    secret1:
+      Type: String
+      Default: ""
+      NoEcho: true
+    secret2:
+      Type: String
+      Default: ""
+      NoEcho: true
+    secret3:
+      Type: String
+      Default: ""
+      NoEcho: true
+    secret4:
+      Type: String
+      Default: ""
+      NoEcho: true
+    secret5:
+      Type: String
+      Default: ""
+      NoEcho: true
+#---------------------------- TASK DEFINITION PARAMETERS --------------------------------
+    cpu:
+      Type: Number
+      Default: 1024
+      AllowedValues: [ 512,1024,2048,4096 ]
+      MinValue: 512
+      MaxValue: 4096
+      ConstraintDescription: El valor de Cpu deberia ser  256 (.25cpu) || 512 (.5 vCPU) || 1024 (1 vCPU) || 2048 (2 vCPU) || 4096 (4 vCPU)
+    memory:
+      Type: Number
+      Default: 2048
+      AllowedValues: [ 512,1024,2048,3072,4096,5120,6144,7168,8192,9216,10240,16384 ]
+      MinValue: 512
+      MaxValue: 16384
+      ConstraintDescription: El valor de Memoria deberia ser de 1GB a 16GB
+    ecsTaskExecutionRole:
+      Type: String
+      Default: ecsTaskExecutionRole
+    ecsTaskRole:
+      Type: String
+      Default: ecsTaskExecutionRole
+#---------------------------- TARGET GROUP PARAMETERS -----------------------------------
+    healthCheckEnabled:
+      Type: String 
+      Default: true
+      AllowedValues:
+        - true
+        - false 
+    targetGroupProtocol:
+      Type: String
+      Default: "HTTP"
+    healthCheckPath:
+      Type: String
+      Default: "/actuator/health/readinessState"
+    HealthCheckIntervalSeconds:
+      Type: String
+      Default: 30
+    HealthCheckTimeoutSeconds:
+      Type: String
+      Default: 5
+    HealthyThresholdCount:
+      Type: String
+      Default: 5
+    UnhealthyThresholdCount:
+      Type: String
+      Default: 5
+#---------------------------- ELASTIC LOAD BALANCER PARAMETERS --------------------------
+    loadBalancerPathPatterns:
+      Type: CommaDelimitedList
+      Default: /ruta1/v1/*,/ruta2/*,/metrics/*
+    pathPriority:
+      Type: Number
+      Default: 56
+      MinValue: 1
+      MaxValue: 100
+#---------------------------- AUTO SCALLING PARAMETERS ----------------------------------
+    scallingMaximumTaskCount:
+      Type: Number
+      Default: 1
+      Description: If this is not equal to 1 auto scalling object will be created
+    cpuAutoScalling:
+      Type: String
+      Default: false
+      AllowedValues: [true,false]
+      Description: Enable an alarm and trigger to scale desired task  count in a service by cpu limit
+    cpuLimitTarget:
+      Type: Number
+      Default: 60
+      MinValue: 60
+      MaxValue: 100
+    ramAutoScalling:
+      Type: String
+      Default: false
+      AllowedValues: [true,false]
+      Description: Enable an alarm and trigger to scale desired task  count in a service by ram limit
+    ramLimitTarget:
+      Type: Number
+      Default: 80
+      MinValue: 60
+      MaxValue: 100
+    perRequestAutoScalling:
+      Type: String
+      Default: false
+      AllowedValues: [true,false]
+      Description: Enable an alarm and trigger to scale desired task  count in a service by ram limit  
+    perRequestLimitTarget:
+      Type: Number
+      Default: 80
+      MinValue: 60
+      MaxValue: 100
+#---------------------------- APP MESH PARAMETERS ---------------------------------------
+    appMeshName:
+      Type: String
+      Default: Herramientas-Mesh
+      Description: Nombre del App Mesh
+    backend1:
+       Type: String
+       Default: ""
+    backend2:
+       Type: String
+       Default: ""
+    backend3:
+       Type: String
+       Default: ""
+    backend4:
+       Type: String
+       Default: ""
+    backend5:
+       Type: String
+       Default: "" 
+
+Conditions:
+#---------------------------- ELASTIC CONTAINER REGISTRY CONDITIONS ---------------------
+    shouldCreateEcr:
+      !Equals [!Ref createEcr,"true"]
+#---------------------------- FARGATE SERVICE CONDITIONS --------------------------------
+    isMicroService:
+      !Equals [!Select [1,!Split ["-",!Ref serviceName]],"MICROSERVICE"] 
+    isTaskService:
+      !Equals [!Select [1,!Split ["-",!Ref serviceName]],"TASKSERVICE"] 
+    isUtilityService:
+      !Equals [!Select [1,!Split ["-",!Ref serviceName]],"UTILITY"] 
+    isEntityService:
+      !Equals [!Select [1,!Split ["-",!Ref serviceName]],"ENTITYSE"]       
+    shouldCreateServiceDiscovery:
+      !Equals [!Ref serviceDiscovery,"true"]
+    shouldNoCreateServiceDiscovery:
+      !Equals [!Ref serviceDiscovery,"false"]
+    serviceDiscoveryNameIsNotEmpty:
+      !Not [!Equals [!Ref serviceDiscoveryName,""]]
+#---------------------------- CONTAINER DEFINITION CONDITIONS ---------------------------
+    shouldExposePort1:
+      !Not [!Equals [!Ref portMapping1,""]]
+    shouldExposePort2:
+      !Not [!Equals [!Ref portMapping2,""]]
+    shouldExposePort3:
+      !Not [!Equals [!Ref portMapping3,""]]
+    shouldExposePort4:
+      !Not [!Equals [!Ref portMapping4,""]]
+    shouldExposePort5:
+      !Not [!Equals [!Ref portMapping5,""]]
+    envVar1Exists: 
+      !Not [!Equals [!Ref envVar1,""]]
+    envVar2Exists: 
+      !Not [!Equals [!Ref envVar2,""]]
+    envVar3Exists: 
+      !Not [!Equals [!Ref envVar3,""]]
+    envVar4Exists: 
+      !Not [!Equals [!Ref envVar4,""]]
+    envVar5Exists: 
+      !Not [!Equals [!Ref envVar5,""]]
+    envVar6Exists: 
+      !Not [!Equals [!Ref envVar6,""]]
+    envVar7Exists: 
+      !Not [!Equals [!Ref envVar7,""]]
+    envVar8Exists: 
+      !Not [!Equals [!Ref envVar8,""]]
+    envVar9Exists: 
+      !Not [!Equals [!Ref envVar9,""]]
+    envVar10Exists:
+      !Not [!Equals [!Ref envVar10,""]]
+    dbParamsExists:
+      !Not [!Equals [!Ref dbParameters,""]]
+    secret1Exists: 
+      !Not [!Equals [!Ref secret1,""]]
+    secret2Exists: 
+      !Not [!Equals [!Ref secret2,""]]
+    secret3Exists: 
+      !Not [!Equals [!Ref secret3,""]]
+    secret4Exists: 
+      !Not [!Equals [!Ref secret4,""]]
+    secret5Exists: 
+      !Not [!Equals [!Ref secret5,""]]    
+#---------------------------- ELASTIC LOAD BALANCER CONDITIONS ------------------------------------
+    privateApi: !Or 
+      - !Equals [!Ref targetGroupProtocol,"TCP"]
+      - !Equals [!Ref targetGroupProtocol,"TLS"]
+    shouldCreateLoadBalancerRule:
+        !Equals [!Ref targetGroupProtocol,"HTTP"] 
+#---------------------------- ATOSCALLING CONDITIONS ------------------------------------
+    shouldActivateAutoScalling: !And 
+      - !Not [!Equals [!Ref scallingMaximumTaskCount,"1"]]
+      - !Equals [!Ref awsEnvironment,"qa"] 
+    shouldActivateCpuAutoScallingPolicy: !And
+      - !Equals [!Ref awsEnvironment,"qa"]
+      - !Equals [!Ref cpuAutoScalling,"true"]
+    shouldActivateRamAutoScallingPolicy: !And
+      - !Equals [!Ref awsEnvironment,"qa"]
+      - !Equals [!Ref ramAutoScalling,"true"]  
+    shouldActivateRequestAutoScallingPolicy: !And
+      - !Equals [!Ref awsEnvironment,"qa"]
+      - !Equals [!Ref perRequestAutoScalling,"true"]      
+#---------------------------- APP MESH CONDITIONS -------------------------------------------------
+    backend1Exist:
+      !Not [ !Equals [!Ref backend1, '']]
+    backend2Exist: 
+      !Not [ !Equals [!Ref backend2, '']]
+    backend3Exist: 
+      !Not [ !Equals [!Ref backend3, '']]
+    backend4Exist: 
+      !Not [ !Equals [!Ref backend4, '']]
+    backend5Exist: 
+      !Not [ !Equals [!Ref backend5, '']]
+Mappings:
+    dev:                                       
+      backend:
+        CLUSTER: Fargate-Herramientas-Fusion   
+        VPC: vpc-03bbbcf56a55f55a5 
+        ALBARN: arn:aws:elasticloadbalancing:us-east-1:047664555706:loadbalancer/app/elb-temporal/c252806cfd917f8d 
+        ALBLISTENERARN: arn:aws:elasticloadbalancing:us-east-1:047664555706:listener/app/elb-temporal/c252806cfd917f8d/12f8b337877cfd2f
+        SECURITYGROUPS: 
+          - sg-0dd7f9d9445f1c3f5
+        SUBNETS: 
+          - subnet-0accb0986c47d571b
+          - subnet-06114769a35a224f5
+        CLOUDMAPNAMESPACEID: ns-dtrt6fu7mylgn3b4
+        CLOUDMAPNAMESPACENAME: herramientas
+      # elektracomercial:
+      #   CLUSTER: cluster_cont_ekt_priv_dev
+      #   VPC: vpc-08837e1c8603ed09e
+      #   ALBARN: arn:aws:elasticloadbalancing:us-east-1:931709539372:loadbalancer/app/ALB-PUB-CONT-EKT-DEV-TF/434b8079f9c03219 
+      #   ALBLISTENERARN: arn:aws:elasticloadbalancing:us-east-1:931709539372:listener/app/ALB-PUB-CONT-EKT-DEV-TF/434b8079f9c03219/6ffa54355c12afde
+      #   SECURITYGROUPS: 
+      #     - sg-0f20fdf089cbe94ed
+      #   SUBNETS: 
+      #     - subnet-02a9fff5c0a95113d
+      #     - subnet-06a0a41457cc47942
+      #   CLOUDMAPNAMESPACE: ns-bpk4u4cs4wpd7oa4
+      # superapp:
+      #   CLUSTER: cluster_cont_ekt_priv_dev
+      #   VPC: vpc-08837e1c8603ed09e
+      #   ALBARN: arn:aws:elasticloadbalancing:us-east-1:931709539372:loadbalancer/app/ALB-PUB-CONT-EKT-DEV-TF/434b8079f9c03219 
+      #   ALBLISTENERARN: arn:aws:elasticloadbalancing:us-east-1:931709539372:listener/app/ALB-PUB-CONT-EKT-DEV-TF/434b8079f9c03219/6ffa54355c12afde
+      #   SECURITYGROUPS: 
+      #     - sg-0f20fdf089cbe94ed
+      #   SUBNETS: 
+      #     - subnet-02a9fff5c0a95113d
+      #     - subnet-06a0a41457cc47942
+      #   CLOUDMAPNAMESPACE: ns-bpk4u4cs4wpd7oa4
+
+Resources:
+    ElasticContainerRegistry:
+       Type: AWS::ECR::Repository
+       Condition: shouldCreateEcr
+       Properties:
+          RepositoryName: !Ref elasticContainerRegistry
+          ImageTagMutability: IMMUTABLE
+          ImageScanningConfiguration:
+             ScanOnPush: "false"
+          LifecyclePolicy:
+             LifecyclePolicyText: |
+              {
+              "rules":[
+                    {
+                   "rulePriority": 1,
+                   "description": "Mantiene solo las imagenes sin tag durante 7 dias",
+                   "selection": {
+                     "tagStatus": "untagged",
+                     "countType": "sinceImagePushed",
+                     "countUnit": "days",
+                     "countNumber": 7
+                    },
+                   "action": { "type": "expire"}
+                    },
+                        {
+                          "rulePriority": 2,
+                          "description": "Mantiene solo 5  imagenes en el ECR del proyecto",
+                          "selection":{
+                             "tagStatus": "any",
+                             "countType": "imageCountMoreThan",
+                             "countNumber": 5
+                           },
+                           "action":{"type":"expire"}
+                        }
+                     ]
+                 }
+#-----------------------------------CLOUDWATCH-----------------------------------
+    CloudWatchLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: !Sub "${areaGerencia}/${elasticContainerRegistry}" 
+#------------------------ TASK DEFINITION RESOURCES  ----------------------------
+    TaskDefinition:
+      Type: AWS::ECS::TaskDefinition
+      DependsOn:
+        - CloudWatchLogGroup
+      Properties:
+        # Name of the task definition. Subsequent versions of the task definition are grouped together under this name.
+        Family: !Join
+                  - "-"
+                  - - "TD"
+                    - !Select [1,!Split ["-", !Ref serviceName]]
+                    - !Select [2,!Split ["-", !Ref serviceName]]
+                    - !Select [3,!Split ["-", !Ref serviceName]]
+        # awsvpc es requeridp en Fargate para enlazar a una shared ENI todos los containersdefinitions incluidos en una tarea es necesaria para tareas de tipo laucnh type fargate
+        NetworkMode: awsvpc
+        RequiresCompatibilities:
+          - FARGATE
+        Cpu:  !Ref cpu
+        Memory: !Ref memory
+          # A role needed by ECS.
+        # "The ARN of the task execution role that containers in this task can assume. All containers in this task are granted the permissions that are specified in this role."
+        # "There is an optional task execution IAM role that you can specify with Fargate to allow your Fargate tasks to make API calls to Amazon ECR."
+        ExecutionRoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole"
+        TaskRoleArn: ecsTaskExecutionRole
+        ProxyConfiguration:
+           ContainerName: envoy
+           Type: APPMESH
+           ProxyConfigurationProperties:
+             - Name: IgnoredUID
+               Value: 1337
+             - Name: IgnoredGID
+               Value: ""
+             - Name: AppPorts
+               Value: !Select [0, !Split ["/", !Ref containerPortDefault]]
+             - Name: ProxyIngressPort
+               Value: 15000
+             - Name: ProxyEgressPort
+               Value: 15001
+             - Name: EgressIgnoredPorts
+               Value: !Ref databasePort
+             - Name: EgressIgnoredIPs
+               Value: "169.254.170.2,169.254.169.254"
+        ContainerDefinitions:
+          - Name: !Sub "container-${elasticContainerRegistry}" 
+            Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${elasticContainerRegistry}:${latestVersion}"
+            PortMappings:
+              - ContainerPort: !Select [0, !Split ["/", !Ref containerPortDefault]] 
+                HostPort: !Select [0, !Split ["/", !Ref containerPortDefault]]
+                Protocol: !Select [1, !Split ["/", !Ref containerPortDefault]]
+              - !If
+                - shouldExposePort1
+                - ContainerPort: !Select [0, !Split ["/", !Ref portMapping1]]
+                  HostPort: !Select [0, !Split ["/", !Ref portMapping1]]
+                  Protocol: !Select [1, !Split ["/", !Ref portMapping1]]
+                - !Ref AWS::NoValue
+              - !If
+                - shouldExposePort2
+                - ContainerPort: !Select [0, !Split ["/", !Ref portMapping2]]
+                  HostPort: !Select [0, !Split ["/", !Ref portMapping2]]
+                  Protocol: !Select [1, !Split ["/", !Ref portMapping2]]
+                - !Ref AWS::NoValue
+              - !If
+                - shouldExposePort3
+                - ContainerPort: !Select [0, !Split ["/", !Ref portMapping3]]
+                  HostPort: !Select [0, !Split ["/", !Ref portMapping3]]
+                  Protocol: !Select [1, !Split ["/", !Ref portMapping3]]
+                - !Ref AWS::NoValue
+            DependsOn:
+              - Condition: HEALTHY
+                ContainerName: envoy
+            LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                awslogs-group: !Ref CloudWatchLogGroup
+                awslogs-region: !Ref "AWS::Region"
+                awslogs-stream-prefix: ecs
+            Environment:
+                - !If
+                  - envVar1Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar1]]
+                    Value: !Select [1, !Split ["||", !Ref envVar1]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar2Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar2]]
+                    Value: !Select [1, !Split ["||", !Ref envVar2]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar3Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar3]]
+                    Value: !Select [1, !Split ["||", !Ref envVar3]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar4Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar4]]
+                    Value: !Select [1, !Split ["||", !Ref envVar4]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar5Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar5]]
+                    Value: !Select [1, !Split ["||", !Ref envVar5]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar6Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar6]]
+                    Value: !Select [1, !Split ["||", !Ref envVar6]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar7Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar7]]
+                    Value: !Select [1, !Split ["||", !Ref envVar7]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar8Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar8]]
+                    Value: !Select [1, !Split ["||", !Ref envVar8]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar9Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar9]]
+                    Value: !Select [1, !Split ["||", !Ref envVar9]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - envVar10Exists
+                  - Name: !Select [0, !Split ["||", !Ref envVar10]]
+                    Value: !Select [1, !Split ["||", !Ref envVar10]]
+                  - !Ref AWS::NoValue
+            Secrets:
+                - !If
+                  - dbParamsExists
+                  - Name: !Select [0, !Split ["||", !Ref dbParameters]]
+                    ValueFrom: !Join
+                                - "/"
+                                - - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter"
+                                  - !Select [1, !Split ["||", !Ref dbParameters]]
+                  - !Ref AWS::NoValue
+                - !If
+                  - secret1Exists
+                  - Name: !Select [0, !Split ["||", !Ref secret1]]
+                    ValueFrom: !Join
+                                - "/"
+                                - - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter"
+                                  - !Select [1, !Split ["||", !Ref secret1]]
+                  - !Ref AWS::NoValue                 
+                - !If
+                  - secret2Exists
+                  - Name: !Select [0, !Split ["||", !Ref secret2]]
+                    ValueFrom: !Join
+                                - "/"
+                                - - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter"
+                                  - !Select [1, !Split ["||", !Ref secret2]]
+                  - !Ref AWS::NoValue                                    
+                - !If
+                  - secret3Exists
+                  - Name: !Select [0, !Split ["||", !Ref secret3]]
+                    ValueFrom: !Join
+                                - "/"
+                                - - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter"
+                                  - !Select [1, !Split ["||", !Ref secret3]]
+                  - !Ref AWS::NoValue                                    
+                - !If
+                  - secret4Exists
+                  - Name: !Select [0, !Split ["||", !Ref secret4]]
+                    ValueFrom: !Join
+                                - "/"
+                                - - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter"
+                                  - !Select [1, !Split ["||", !Ref secret4]]                
+                  - !Ref AWS::NoValue 
+                - !If
+                  - secret5Exists
+                  - Name: !Select [0, !Split ["||", !Ref secret5]]
+                    ValueFrom: !Join
+                                - "/"
+                                - - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter"
+                                  - !Select [1, !Split ["||", !Ref secret5]]
+                  - !Ref AWS::NoValue
+          - Name: xray-daemon
+            Image: 047664555706.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-xray-daemon
+            User: 1337
+            Essential: true
+            PortMappings:
+              - ContainerPort: 2000
+                Protocol: udp
+            DependsOn:
+              - Condition: HEALTHY
+                ContainerName: envoy
+            LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                awslogs-group: !Ref CloudWatchLogGroup
+                awslogs-region: !Ref "AWS::Region"
+                awslogs-stream-prefix: ecs
+          - Name: envoy
+            Image: 840364872350.dkr.ecr.us-east-1.amazonaws.com/aws-appmesh-envoy:v1.15.1.0-prod
+            Essential: true
+            Memory: 500
+            User: 1337
+            HealthCheck:
+                Command:
+                  - "CMD-SHELL"
+                  - "curl -s http://localhost:9901/server_info | grep state | grep -q LIVE"
+                Interval: 5
+                Retries: 3
+                StartPeriod: 10
+                Timeout: 2
+            LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                awslogs-group: !Ref CloudWatchLogGroup
+                awslogs-region: !Ref "AWS::Region"
+                awslogs-stream-prefix: ecs
+            Environment:
+              - Name: APPMESH_VIRTUAL_NODE_NAME
+                Value: !Join ['/', ['mesh',!Ref appMeshName, 'virtualNode', !GetAtt 'AppMeshVirtualNode.VirtualNodeName']]
+              - Name: ENABLE_ENVOY_XRAY_TRACING
+                Value: 1
+              - Name: ENVOY_LOG_LEVEL
+                Value: trace
+#------------------------ FARGATE SERVICES RESOURCES  ---------------------------
+    Service:
+      Type: AWS::ECS::Service
+      DependsOn:
+        - TaskDefinition
+        - LoadBalancerRule
+      Condition: shouldNoCreateServiceDiscovery
+      Properties:
+        ServiceName: !Ref serviceName
+        Cluster: !Join  
+                  - "/"
+                  - - !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster"
+                    - !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer ,CLUSTER]
+        LaunchType: FARGATE
+        PlatformVersion: LATEST
+        DeploymentConfiguration:
+          MaximumPercent: !Ref maximumPercent
+          MinimumHealthyPercent: !Ref minimumHealthyPercent
+        HealthCheckGracePeriodSeconds: !Ref healthCheckGracePeriodSeconds
+        DesiredCount: !Ref serviceTaskDesiredCount
+        NetworkConfiguration:
+          AwsvpcConfiguration:
+            AssignPublicIp: DISABLED
+            SecurityGroups: !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer ,SECURITYGROUPS]
+            Subnets: !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer,SUBNETS]
+        TaskDefinition: !Ref TaskDefinition
+        LoadBalancers:
+          - ContainerName: !Sub "container-${elasticContainerRegistry}" 
+            ContainerPort: !Select [0, !Split ["/", !Ref containerPortDefault]] 
+            TargetGroupArn: !Ref TargetGroup
+        ServiceRegistries:  
+        - RegistryArn: !GetAtt ServiceDiscovery.Arn
+          ContainerName: !Sub "container-${elasticContainerRegistry}"
+          ContainerPort: !Select [0, !Split ["/", !Ref containerPortDefault]]
+#----------------------------------CLOUDMAP / ROUTE 53 RESOURCES-------------------------------------------
+    ServiceDiscovery:
+      Type: AWS::ServiceDiscovery::Service
+      DependsOn:
+        - TaskDefinition
+      Condition: shouldCreateServiceDiscovery
+      Properties:
+        Description: Service discovery para el Fargate Service
+        DnsConfig:
+            RoutingPolicy: MULTIVALUE
+            DnsRecords:
+              - TTL: !Ref TTLTime
+                Type: A
+              - TTL: !Ref TTLTime
+                Type: SRV
+        HealthCheckCustomConfig:
+          FailureThreshold: !Ref failureThreshold
+        Name: !If [serviceDiscoveryNameIsNotEmpty,!Ref serviceDiscoveryName,!Sub "sd-srv-${elasticContainerRegistry}"]
+        NamespaceId: !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer ,CLOUDMAPNAMESPACEID]
+#----------------------------------EC2 TARGET GROUP RESOURCES-------------------------------------------
+    TargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      DependsOn:
+        - TaskDefinition
+      Properties:
+        Name: !Join 
+                - "-"
+                - - "TG"
+                  - !If [isMicroService,"MS",!If [isEntityService,"ES",!If [isTaskService,"TS",!If [isUtilityService,"US",!Ref AWS::NoValue]]]]
+                  - !Select [2,!Split ["-", !Ref serviceName]]
+                  - !Select [3,!Split ["-", !Ref serviceName]]      
+        Protocol: !Ref targetGroupProtocol
+        HealthCheckProtocol: HTTP
+        HealthCheckEnabled: !Ref healthCheckEnabled 
+        TargetType: ip
+        HealthCheckPath: !Ref healthCheckPath
+        Matcher:
+          HttpCode: 200
+        HealthCheckIntervalSeconds: !If [shouldCreateLoadBalancerRule,30,20] 
+        HealthyThresholdCount: !If [shouldCreateLoadBalancerRule,2,3]
+        HealthCheckTimeoutSeconds: !If [shouldCreateLoadBalancerRule,10,5] 
+        UnhealthyThresholdCount: !If [shouldCreateLoadBalancerRule,2,3]
+        Port: !Select [0, !Split ["/", !Ref containerPortDefault]]
+        VpcId: !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer ,VPC]
+#-------------------------EC2 LOAD BALANCER RULE RESOURCES-----------------------------------
+    LoadBalancerRule:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      DependsOn:
+        - TargetGroup
+      Properties:
+        Actions:
+          - TargetGroupArn: !Ref TargetGroup
+            Type: 'forward'
+        Conditions:
+          - Field: path-pattern
+            PathPatternConfig:
+              Values: !Ref loadBalancerPathPatterns     
+        ListenerArn: !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer ,ALBLISTENERARN]
+        Priority: !Ref pathPriority        
+    LoadBalancerRuleWaitHandle:
+      DependsOn: LoadBalancerRule
+      Type: AWS::CloudFormation::WaitConditionHandle
+    LoadBalancerRuleWaitCondition:
+      Type: AWS::CloudFormation::WaitCondition
+      Properties:
+        Handle: !Ref LoadBalancerRuleWaitHandle
+        Timeout: "60"
+        Count: 0
+# ----------------------- AUTO SCALLING RESOURCES  -------------------------------
+    AutoScallingScalableObject:
+      Type: AWS::ApplicationAutoScaling::ScalableTarget
+      Condition: shouldActivateAutoScalling
+      Properties:
+        MaxCapacity: !Ref scallingMaximumTaskCount
+        MinCapacity: !Ref serviceTaskDesiredCount
+        ResourceId: !Join
+                      - '/'
+                      - - service
+                        - !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer ,CLUSTER]
+                        - !GetAtt Service.Name
+        RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+        ScalableDimension: ecs:service:DesiredCount
+        ServiceNamespace: ecs       
+    AutoScalingPolicyCpu:
+      Type: AWS::ApplicationAutoScaling::ScalingPolicy
+      Condition: shouldActivateCpuAutoScallingPolicy
+      DependsOn:
+        - AutoScallingScalableObject
+      Properties:
+        PolicyName: !Join
+                      - '-'
+                      - - AS
+                        - !GetAtt Service.Name
+                        - CPU
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId: !Ref AutoScallingScalableObject
+        TargetTrackingScalingPolicyConfiguration:
+          DisableScaleIn: False
+          TargetValue: !Ref cpuLimitTarget
+          ScaleInCooldown: 300
+          ScaleOutCooldown: 60
+          PredefinedMetricSpecification:
+            PredefinedMetricType: ECSServiceAverageCPUUtilization 
+    AutoScalingPolicyMemory:
+      Type: AWS::ApplicationAutoScaling::ScalingPolicy
+      Condition: shouldActivateRamAutoScallingPolicy
+      DependsOn:
+        - AutoScallingScalableObject
+      Properties:
+        PolicyName: !Join
+                      - '-'
+                      - - AS
+                        - !GetAtt Service.Name
+                        - RAM
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId: !Ref AutoScallingScalableObject
+        TargetTrackingScalingPolicyConfiguration:
+          DisableScaleIn: False 
+          TargetValue: !Ref ramLimitTarget
+          ScaleInCooldown: 300
+          ScaleOutCooldown: 60
+          PredefinedMetricSpecification:
+            PredefinedMetricType: ECSServiceAverageMemoryUtilization        
+    AutoScalingPolicyRequest:
+      Type: AWS::ApplicationAutoScaling::ScalingPolicy
+      Condition: shouldActivateRequestAutoScallingPolicy
+      DependsOn:
+        - AutoScallingScalableObject
+      Properties:
+        PolicyName: !Join
+                      - '-'
+                      - - AS
+                        - !GetAtt Service.Name
+                        - REQUESTPERTARGET
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId: !Ref AutoScallingScalableObject
+        TargetTrackingScalingPolicyConfiguration:
+          DisableScaleIn: False
+          TargetValue: !Ref perRequestLimitTarget
+          ScaleInCooldown: 300
+          ScaleOutCooldown: 60
+          PredefinedMetricSpecification:
+            PredefinedMetricType: ALBRequestCountPerTarget
+            ResourceLabel: !Join
+                            - "/"
+                            - - !Select [1,!Split ["loadbalancer/",!FindInMap [!Ref awsEnvironment , !Ref microserviceLayer, ALBARN]]]
+                              - !Select [5, !Split [":",!Ref TargetGroup]]
+#------------------------------ APP MESH RESOURCES ----------------------------------------
+    AppMeshVirtualNode:
+      Type: AWS::AppMesh::VirtualNode
+      DependsOn:
+        - Service
+      Properties:
+        MeshName: !Ref appMeshName
+        VirtualNodeName: !Sub "VN-{serviceName}"
+        Spec:
+          Listeners:
+            - PortMapping:
+                Port: !Select [0, !Split ["/", !Ref containerPortDefault]] 
+                Protocol: http
+              HealthCheck:
+                Protocol: http
+                Path: !Ref healthCheckPath
+                HealthyThreshold: 2
+                UnhealthyThreshold: 2
+                TimeoutMillis: 2000
+                IntervalMillis: 5000
+          ServiceDiscovery:
+            DNS:
+              Hostname: !Join
+                          - "."
+                          - - !If [serviceDiscoveryNameIsNotEmpty,!Ref serviceDiscoveryName,!Sub "sd-srv-${elasticContainerRegistry}"]
+                            - !FindInMap [!Ref awsEnvironment,!Ref microserviceLayer, CLOUDMAPNAMESPACENAME]
+          Backends:
+            !If
+              - backend1Exist
+              - 
+                - VirtualService:
+                    VirtualServiceName: !Ref backend1
+                - !If
+                  - backend2Exist
+                  -
+                    VirtualService:
+                      VirtualServiceName: !Ref backend2
+                  - !Ref AWS::NoValue
+                - !If
+                  - backend3Exist
+                  -
+                    VirtualService:
+                      VirtualServiceName: !Ref backend3
+                  - !Ref AWS::NoValue
+              - !Ref AWS::NoValue
+    AppMeshVirtualService:
+      Type: AWS::AppMesh::VirtualService
+      DependsOn: AppMeshVirtualNode
+      Properties:
+        MeshName: !Ref appMeshName
+        Spec:
+          Provider:
+            VirtualNode:
+              VirtualNodeName: !GetAtt AppMeshVirtualNode.VirtualNodeName
+        VirtualServiceName: !Sub "VS-{ServiceName}"                              
+                              
+Outputs:
+    CloudWatchLogGroupName:
+      Description: Name of the Cloud Watch Log Group
+      Value: !Ref CloudWatchLogGroup
+      Export:
+        Name: !Sub "${serviceName}-CLOUDWATCH-LOGS"
+    TaskDefinitionFamilyArn:
+      Description: Task definition's family name
+      Value: !Ref TaskDefinition
+      Export:
+        Name: !Sub "${serviceName}-TASKDEFINITION-ARN"
+    ServiceFargateArn:
+      Description: Service ARN
+      Condition: shouldNoCreateServiceDiscovery 
+      Value: !Ref Service
+      Export:
+        Name: !Sub "${serviceName}-ARN"
+    ServiceDiscoveryEndpoint:
+      Description: Service Discovery DNS http://service-discovery-srv-[microservice|utility|]-clientes.[namespace-middleware|namespace-identidad-digital|namespace-servicios-comunes]/${basepath}
+      Condition: shouldCreateServiceDiscovery
+      Value: !GetAtt ServiceDiscovery.Name
+      Export:
+        Name: !Sub "${serviceName}-SERVICE-DISCOVERY-ENDPOINT"
+    TargetGroupArn:
+      Description: Target Group Arn 
+      Value: !GetAtt TargetGroup.TargetGroupName
+      Export:
+        Name: !Sub "${serviceName}-TARGET-GROUP-ARN"
+    LoadBalancerRuleArn:
+      Description: Load Balancer Rule ARN
+      Value: !GetAtt LoadBalancerRule.RuleArn
+      Export:
+        Name: !Sub "${serviceName}-LOADBALANCER-RULE-ARN"    
+    ScalableObjectArn:
+      Description: Service Scalable Object Arn to identify AutoScalling Groups
+      Condition: shouldActivateAutoScalling
+      Value: !Ref AutoScallingScalableObject 
+      Export:
+        Name: !Sub "${serviceName}-AUTOSCALLING-OBJECT-ARN"
+    AutoScalingPolicyCpuArn:
+      Description: Cpu Auto Scalling Policy Arn
+      Condition: shouldActivateCpuAutoScallingPolicy
+      Value: !Ref AutoScalingPolicyCpu
+      Export:
+        Name: !Sub "${serviceName}-AUTOSCALLING-CPU-POLICY-ARN"
+    AutoScalingPolicyRamArn:
+      Description: Ram Auto Scalling Policy Arn
+      Condition: shouldActivateRamAutoScallingPolicy
+      Value: !Ref AutoScalingPolicyMemory
+      Export:
+        Name: !Sub "${serviceName}-AUTOSCALLING-RAM-POLICY-ARN"
+    AutoScalingPolicyRequestArn:
+      Description: Request Limit Auto Scalling Policy Arn
+      Condition: shouldActivateRequestAutoScallingPolicy
+      Value: !Ref AutoScalingPolicyRequest 
+      Export:
+        Name: !Sub "${serviceName}-AUTOSCALLING-REQUEST-POLICY-ARN"
